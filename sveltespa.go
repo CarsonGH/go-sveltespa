@@ -14,28 +14,29 @@ import (
 func EmbeddedRouter(embeddedFrontend embed.FS, root, notFoundFile string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-		// Check if the request is for the root "/"
+
+		// Root path
 		if path == "/" {
-			file, err := embeddedFrontend.ReadFile(filepath.Join(root, "index.html"))
+			fullPath := filepath.Join(root, "index.html")
+			file, err := embeddedFrontend.ReadFile(fullPath)
 			if !errors.Is(err, fs.ErrNotExist) && err != nil {
 				http.NotFound(w, r)
 				return
 			}
 			if errors.Is(err, fs.ErrNotExist) {
-				file, err = embeddedFrontend.ReadFile(filepath.Join(root, notFoundFile))
+				fullPath = filepath.Join(root, notFoundFile)
+				file, err = embeddedFrontend.ReadFile(fullPath)
 				if err != nil {
 					http.NotFound(w, r)
 					return
-
 				}
 			}
-
 			w.Header().Set("Content-Type", http.DetectContentType(file))
 			w.Write(file)
 			return
 		}
+
 		fileExtension := filepath.Ext(path)
-		// Try to serve the requested file as-is (for images and other files with extensions)
 		filePath := filepath.Join(root, path)
 		file, err := embeddedFrontend.ReadFile(filePath)
 		if err == nil {
@@ -44,7 +45,7 @@ func EmbeddedRouter(embeddedFrontend embed.FS, root, notFoundFile string) http.H
 			return
 		}
 
-		// If not found, try to serve the requested file with ".html" extension  this is due to svelte prerender stuff
+		// Try with ".html"
 		filePath = filepath.Join(root, path+".html")
 		file, err = embeddedFrontend.ReadFile(filePath)
 		if err == nil {
@@ -53,7 +54,7 @@ func EmbeddedRouter(embeddedFrontend embed.FS, root, notFoundFile string) http.H
 			return
 		}
 
-		// If still not found, serve notFoundFile
+		// Fallback to notFoundFile
 		filePath = filepath.Join(root, notFoundFile)
 		file, err = embeddedFrontend.ReadFile(filePath)
 		if err == nil {
